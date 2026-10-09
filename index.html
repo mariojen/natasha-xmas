@@ -242,7 +242,9 @@ let lastDay = -1;
 function tick() {
   const now = new Date();
   const t = target(now);
-  const diff = t - now;
+  // Wall-clock difference: ignore DST shifts so the hours match the clock
+  const wall = x => Date.UTC(x.getFullYear(), x.getMonth(), x.getDate(), x.getHours(), x.getMinutes(), x.getSeconds(), x.getMilliseconds());
+  const diff = wall(t) - wall(now);
   const app = $("app");
 
   if (diff <= 0) {
