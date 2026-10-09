@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Natasha's Christmas Countdown</title>
+<meta name="description" content="Counting down to julafton.">
+<meta name="theme-color" content="#0f1a2b">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎄</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ========= EDIT ME ========= */
+  /* Text lives in the CONFIG block in the <script> at the bottom. */
+
+  :root {
+    --night: #0f1a2b;
+    --night-2: #16253b;
+    --ink: #f4efe6;
+    --muted: #a9b4c4;
+    --gold: #e8c27a;
+    --red: #c8443c;
+    --card: rgba(255,255,255,0.06);
+    --card-border: rgba(255,255,255,0.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: radial-gradient(ellipse at 50% -10%, #23395a 0%, var(--night-2) 45%, var(--night) 100%) fixed;
+    background-color: var(--night);
+    color: var(--ink);
+    font-family: "Inter", system-ui, sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  #snow { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+
+  main {
+    position: relative; z-index: 1;
+    max-width: 720px; margin: 0 auto;
+    padding: clamp(40px, 9vh, 96px) 16px 48px;
+    text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 36px;
+  }
+
+  .eyebrow {
+    font-size: 13px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--gold);
+  }
+  h1 {
+    font-family: "Fraunces", Georgia, serif; font-weight: 300;
+    font-size: clamp(38px, 9vw, 68px); line-height: 1.05;
+    margin-top: 12px;
+  }
+  h1 em { font-style: italic; font-weight: 600; color: var(--gold); }
+
+  .clock {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: clamp(8px, 2.5vw, 16px); width: 100%;
+  }
+  .unit {
+    background: var(--card); border: 1px solid var(--card-border);
+    border-radius: 18px; padding: clamp(14px, 3.5vw, 24px) 4px;
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  }
+  .num {
+    font-family: "Fraunces", Georgia, serif; font-weight: 600;
+    font-size: clamp(34px, 10vw, 64px); line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .lbl {
+    margin-top: 8px; font-size: 11px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--muted);
+  }
+
+  .candles { display: flex; gap: clamp(18px, 6vw, 36px); align-items: flex-end; justify-content: center; }
+  .candle { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .flame {
+    width: 12px; height: 20px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    background: radial-gradient(circle at 50% 70%, #fff6d6 0%, #ffd27a 45%, #ff8a3d 80%, transparent 100%);
+    opacity: 0; transform-origin: 50% 100%;
+    filter: drop-shadow(0 0 8px rgba(255,190,90,0.8));
+    transition: opacity 0.6s;
+  }
+  .candle.lit .flame { opacity: 1; animation: flicker 2.4s infinite ease-in-out; }
+  .stick { width: 16px; height: 52px; border-radius: 3px; background: linear-gradient(#f3ece0, #d9cfbf); }
+  .candle.lit .stick { box-shadow: 0 -10px 24px rgba(255,190,90,0.25); }
+  .candle span { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; }
+  @keyframes flicker {
+    0%,100% { transform: scale(1) rotate(-1deg); }
+    40% { transform: scale(1.06, 0.95) rotate(2deg); }
+    70% { transform: scale(0.96, 1.05) rotate(-2deg); }
+  }
+
+  .note {
+    width: 100%; background: var(--card); border: 1px solid var(--card-border);
+    border-radius: 18px; padding: 22px 20px; text-align: left;
+  }
+  .note h2 {
+    font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--gold); font-weight: 500; margin-bottom: 10px;
+  }
+  .note p { font-family: "Fraunces", Georgia, serif; font-size: 20px; line-height: 1.45; font-weight: 300; }
+
+  .sub { color: var(--muted); font-size: 15px; line-height: 1.5; }
+  footer { color: var(--muted); font-size: 13px; opacity: 0.8; }
+
+  .celebrate h1 { font-size: clamp(48px, 13vw, 96px); }
+  @media (prefers-reduced-motion: reduce) {
+    .candle.lit .flame { animation: none; }
+  }
+</style>
+</head>
+<body>
+<canvas id="snow" aria-hidden="true"></canvas>
+
+<main id="app">
+  <header>
+    <div class="eyebrow" id="eyebrow">For Natasha</div>
+    <h1 id="title">Counting down to <em>julafton</em></h1>
+  </header>
+
+  <section class="clock" id="clock" aria-live="polite">
+    <div class="unit"><div class="num" id="d">--</div><div class="lbl">Days</div></div>
+    <div class="unit"><div class="num" id="h">--</div><div class="lbl">Hours</div></div>
+    <div class="unit"><div class="num" id="m">--</div><div class="lbl">Minutes</div></div>
+    <div class="unit"><div class="num" id="s">--</div><div class="lbl">Seconds</div></div>
+  </section>
+
+  <section class="candles" id="candles" aria-label="Advent candles"></section>
+  <p class="sub" id="adventText"></p>
+
+  <section class="note">
+    <h2 id="noteTitle">Today's note</h2>
+    <p id="noteText"></p>
+  </section>
+
+  <footer id="footer">With love, Jens</footer>
+</main>
+
+<script>
+/* ================= CONFIG — edit freely ================= */
+const CONFIG = {
+  name: "Natasha",
+  signature: "With love, Jens",
+  // Main day: Swedish Christmas Eve. Change to 25 if you prefer Christmas Day.
+  month: 12, day: 24,
+  // Shown before December (rotates daily)
+  waitingNotes: [
+    "Glögg season is getting closer.",
+    "Somewhere, a lussekatt is already dreaming of saffron.",
+    "Start thinking about which Christmas film comes first this year.",
+    "The days are getting darker — the candles will fix that.",
+    "Good things are worth the wait. So are you."
+  ],
+  // One note per December day, 1–24. Replace with your own little messages.
+  decemberNotes: [
+    "December's here. Let the countdown get serious.",
+    "Advent calendar check: one door at a time.",
+    "Perfect night for something warm and a blanket.",
+    "Pepparkakor count as dinner this month. Probably.",
+    "Pick tonight's Christmas song. Your choice, no vetoes.",
+    "A slow morning is a gift too.",
+    "Let's put up one more string of lights.",
+    "Glögg o'clock, wherever you are.",
+    "Something sweet is hiding somewhere. Go look.",
+    "Halfway through the first part of the wait.",
+    "Tonight: no screens, just candles.",
+    "Thank you for making this home feel like Christmas.",
+    "Lucia morning — saffron and singing.",
+    "Ten days of countdown left. You're doing great.",
+    "Wrapping paper amnesty: we'll find the tape.",
+    "Hot chocolate, extra marshmallows. That's the rule.",
+    "One week to go.",
+    "Count the windows with stars in them on your walk.",
+    "The kids are probably more excited than both of us.",
+    "Fourth candle territory.",
+    "Shortest day of the year — it only gets lighter from here.",
+    "Two more sleeps.",
+    "Dopparedagen eve. Almost there.",
+    "God Jul, " + "Natasha" + ". ❤️"
+  ],
+  // Shown on the 24th–26th
+  celebrateTitle: "God Jul",
+  celebrateText: "It's here. Merry Christmas — love you."
+};
+/* ======================================================== */
+
+const $ = id => document.getElementById(id);
+$("eyebrow").textContent = "For " + CONFIG.name;
+$("footer").textContent = CONFIG.signature;
+
+function target(now) {
+  let y = now.getFullYear();
+  const t = new Date(y, CONFIG.month - 1, CONFIG.day, 0, 0, 0);
+  // Keep celebrating through Dec 26, then roll to next year
+  const endCelebrate = new Date(y, CONFIG.month - 1, CONFIG.day + 3, 0, 0, 0);
+  if (now >= endCelebrate) return new Date(y + 1, CONFIG.month - 1, CONFIG.day);
+  return t;
+}
+
+function adventSundays(year) {
+  const xmasEve = new Date(year, 11, 24);
+  const fourth = new Date(year, 11, 24 - xmasEve.getDay()); // Sunday on/before Dec 24
+  return [21, 14, 7, 0].map(off => new Date(fourth.getFullYear(), fourth.getMonth(), fourth.getDate() - off));
+}
+
+const ord = ["First", "Second", "Third", "Fourth"];
+function renderCandles(now) {
+  const sundays = adventSundays(now.getMonth() >= 11 || now.getMonth() < 1 ? now.getFullYear() : now.getFullYear());
+  const lit = sundays.filter(s => now >= s).length;
+  const wrap = $("candles");
+  wrap.innerHTML = "";
+  sundays.forEach((s, i) => {
+    const c = document.createElement("div");
+    c.className = "candle" + (i < lit ? " lit" : "");
+    c.innerHTML = '<div class="flame"></div><div class="stick"></div><span>' + (i + 1) + '</span>';
+    wrap.appendChild(c);
+  });
+  const fmt = d => d.toLocaleDateString("en-GB", { day: "numeric", month: "long" });
+  if (lit === 0) $("adventText").textContent = "First Advent candle gets lit on " + fmt(sundays[0]) + ".";
+  else if (lit < 4) $("adventText").textContent = ord[lit - 1] + " Advent. Next candle on " + fmt(sundays[lit]) + ".";
+  else $("adventText").textContent = "All four candles are lit.";
+}
+
+function renderNote(now) {
+  const m = now.getMonth(), d = now.getDate();
+  if (m === 11 && d <= 24) {
+    $("noteTitle").textContent = d + " December";
+    $("noteText").textContent = CONFIG.decemberNotes[d - 1] || "";
+  } else {
+    const dayIndex = Math.floor(now / 86400000);
+    $("noteTitle").textContent = "Today's note";
+    $("noteText").textContent = CONFIG.waitingNotes[dayIndex % CONFIG.waitingNotes.length];
+  }
+}
+
+const pad = n => String(n).padStart(2, "0");
+let lastDay = -1;
+function tick() {
+  const now = new Date();
+  const t = target(now);
+  const diff = t - now;
+  const app = $("app");
+
+  if (diff <= 0) {
+    app.classList.add("celebrate");
+    $("title").innerHTML = "<em>" + CONFIG.celebrateTitle + "</em>";
+    $("clock").style.display = "none";
+    $("noteTitle").textContent = "Julafton";
+    $("noteText").textContent = CONFIG.celebrateText;
+  } else {
+    app.classList.remove("celebrate");
+    $("clock").style.display = "";
+    const s = Math.floor(diff / 1000);
+    $("d").textContent = Math.floor(s / 86400);
+    $("h").textContent = pad(Math.floor(s / 3600) % 24);
+    $("m").textContent = pad(Math.floor(s / 60) % 60);
+    $("s").textContent = pad(s % 60);
+  }
+
+  if (now.getDate() !== lastDay) {
+    lastDay = now.getDate();
+    renderCandles(now);
+    if (diff > 0) renderNote(now);
+  }
+}
+tick();
+setInterval(tick, 1000);
+
+/* ---------- Snow ---------- */
+(() => {
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const cv = $("snow"), ctx = cv.getContext("2d");
+  let W, H, flakes = [];
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  function resize() {
+    W = window.innerWidth; H = window.innerHeight;
+    cv.width = W * dpr; cv.height = H * dpr;
+    cv.style.width = W + "px"; cv.style.height = H + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const count = Math.round(Math.min(160, W * H / 9000));
+    flakes = Array.from({ length: count }, () => ({
+      x: Math.random() * W, y: Math.random() * H,
+      r: 0.8 + Math.random() * 2.4,
+      v: 0.3 + Math.random() * 0.9,
+      w: Math.random() * Math.PI * 2,
+      o: 0.35 + Math.random() * 0.55
+    }));
+  }
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    for (const f of flakes) {
+      f.y += f.v; f.w += 0.01; f.x += Math.sin(f.w) * 0.35;
+      if (f.y > H + 4) { f.y = -4; f.x = Math.random() * W; }
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(255,255,255," + f.o + ")";
+      ctx.fill();
+    }
+    if (!reduce) requestAnimationFrame(draw);
+  }
+  window.addEventListener("resize", resize);
+  resize(); draw();
+})();
+</script>
+</body>
+</html>
