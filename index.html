@@ -477,7 +477,7 @@ function paintScene(date, sinceText) {
   const s = sceneState(date);
   $("tree").innerHTML = drawScene(s);
   $("tree").setAttribute("viewBox", s.vb.map(v => v.toFixed(1)).join(" "));
-  $("sceneCap").innerHTML = (s.phase === "empty" ? "" : `<span class="scene-day">Day ${s.d + 1}</span>`) + sceneCaption(s);
+  $("sceneCap").innerHTML = (s.phase === "empty" ? "" : `<span class="scene-day">Today</span>`) + sceneCaption(s);
   $("sceneSince").textContent = sinceText || "";
 }
 function renderScene(now) {
