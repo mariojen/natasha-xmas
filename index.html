@@ -122,6 +122,8 @@
   }
   .scene-since { margin-top: 4px; font-size: 12px; color: var(--muted); min-height: 1em; }
   .scene .spark, .scene .new { transform-box: fill-box; transform-origin: center; animation: pop 1.8s ease-in-out infinite; }
+  .scene .smoke { animation: smoke 4s ease-in-out infinite; }
+  @keyframes smoke { 0%,100% { transform: translateY(0); opacity: .35; } 50% { transform: translateY(-3px); opacity: .15; } }
   .scene .bulb { animation: blink 2.6s ease-in-out infinite; }
   .scene .glow { filter: drop-shadow(0 0 5px rgba(255,210,120,0.9)); }
   .scene .fall { transform-box: fill-box; transform-origin: center; animation: fall 7s linear infinite; }
@@ -132,7 +134,7 @@
   .celebrate h1 { font-size: clamp(48px, 13vw, 96px); }
   @media (prefers-reduced-motion: reduce) {
     .candle.lit .flame { animation: none; }
-    .scene .spark, .scene .new, .scene .bulb, .scene .fall { animation: none; }
+    .scene .spark, .scene .new, .scene .bulb, .scene .fall, .scene .smoke { animation: none; }
   }
 </style>
 </head>
@@ -367,7 +369,8 @@ const SLOTS = (() => {
 })();
 
 function decoSVG(type, col, x, y, cls) {
-  const g = (inner) => `<g transform="translate(${x.toFixed(1)},${y.toFixed(1)})"><g class="${cls || ""}">${inner}</g></g>`;
+  const big = ["dala", "goat", "lussekatt"].includes(type) ? " scale(1.5)" : "";
+  const g = (inner) => `<g transform="translate(${x.toFixed(1)},${y.toFixed(1)})${big}"><g class="${cls || ""}">${inner}</g></g>`;
   switch (type) {
     case "bauble": return g(`<rect x="-1.2" y="-5.6" width="2.4" height="1.8" fill="#d9c08a"/><circle r="4.2" fill="${col}"/><circle cx="-1.4" cy="-1.4" r="1.1" fill="#fff" opacity=".55"/>`);
     case "heart": return g(`<path d="M0,3.6 C-5.6,-0.6 -3.4,-5.4 0,-2.6 C3.4,-5.4 5.6,-0.6 0,3.6Z" fill="${col}"/>`);
@@ -470,6 +473,22 @@ function drawScene(s) {
       front += `<g transform="translate(${tx} ${ty}) scale(1.55) translate(${-tx} ${-ty})"><rect x="${tx - 5}" y="${ty - 8}" width="10" height="8" rx="3" fill="#c8443c"/><circle cx="${tx}" cy="${ty - 11}" r="4" fill="#f2c9a8"/><path d="M${tx - 4.6},${ty - 11} Q${tx},${ty - 1} ${tx + 4.6},${ty - 11} Q${tx},${ty - 7.5} ${tx - 4.6},${ty - 11}Z" fill="#f6f3ee"/><path d="M${tx - 5},${ty - 13.5} L${tx + 1},${ty - 26} L${tx + 5},${ty - 13.5}Z" fill="#c8443c"/><circle cx="${tx + 1}" cy="${ty - 26}" r="1.6" fill="#f6f3ee"/><rect x="${tx - 5.4}" y="${ty - 14.6}" width="10.8" height="2.2" rx="1.1" fill="#f6f3ee"/><circle cx="${tx - 1.4}" cy="${ty - 11.6}" r=".5" fill="#2a1a12"/><circle cx="${tx + 1.6}" cy="${ty - 11.6}" r=".5" fill="#2a1a12"/><circle cx="${tx + 0.2}" cy="${ty - 10.2}" r=".9" fill="#e59b86"/></g>`;
     }
   }
+  {
+    const sx = vb[0] + vb[2] * 0.8, sy = hillY(sx) + 0.5, z = k * 1.05;
+    let h = `<g transform="translate(${sx.toFixed(1)} ${sy.toFixed(1)}) scale(${z.toFixed(3)})">`;
+    h += `<circle cx="6.5" cy="-7.5" r="13" fill="url(#winGlow)"/>`;
+    h += `<rect x="7" y="-29" width="3.4" height="8" fill="#3a3f4a"/>`;
+    if (s.frost) h += `<circle class="smoke" cx="8.7" cy="-32" r="2.2" fill="#c9d3e0" opacity=".35"/><circle class="smoke" style="animation-delay:-2s" cx="9.7" cy="-36" r="2.8" fill="#c9d3e0" opacity=".25"/>`;
+    h += `<rect x="-15" y="-16" width="30" height="16" fill="#a8322b"/><rect x="-15" y="-16" width="30" height="16" fill="url(#plankG)" opacity=".35"/>`;
+    h += `<rect x="-15.5" y="-16" width="1.8" height="16" fill="#f3ece0"/><rect x="13.7" y="-16" width="1.8" height="16" fill="#f3ece0"/>`;
+    h += `<path d="M-18.5,-15 L0,-28 L18.5,-15Z" fill="#2b2f3a"/><rect x="-18.5" y="-16" width="37" height="1.6" fill="#f3ece0"/>`;
+    if (s.snow > 0) h += `<path d="M-18.5,-15.4 L0,-28.4 L18.5,-15.4 L16,-15.4 L0,-26 L-16,-15.4Z" fill="#eef3f8" opacity="${Math.min(1, 0.3 + s.snow).toFixed(2)}"/>`;
+    h += `<rect x="-10.5" y="-11" width="6" height="11" fill="#6b2420"/><rect x="-11" y="-11.5" width="7" height="1" fill="#f3ece0"/><circle cx="-5.8" cy="-5.5" r=".6" fill="#e8c27a"/>`;
+    h += `<rect x="2.5" y="-12" width="8" height="7.5" fill="#ffd27a"/><path d="M6.5,-12 V-4.5 M2.5,-8.2 H10.5" stroke="#f3ece0" stroke-width="1"/><rect x="2" y="-12.5" width="9" height="8.5" fill="none" stroke="#f3ece0" stroke-width="1"/>`;
+    if (s.lights) h += `<g class="glow">${starPath(6.5, -8.3, 3.2, "#fff3d0")}</g>`;
+    h += `</g>`;
+    back += h;
+  }
   if (s.visitor === "hedgehog") {
     const hx = Math.round(cx - Math.max(22, (24 + 106 * s.tg) * 0.4 + 16)), hy = hillY(hx) - 3.5;
     front += `<g><path d="M${hx - 10},${hy + 3} Q${hx - 10},${hy - 7} ${hx},${hy - 7} Q${hx + 8},${hy - 7} ${hx + 9},${hy + 1} L${hx + 9},${hy + 3}Z" fill="#5e4230"/>`;
@@ -481,6 +500,8 @@ function drawScene(s) {
   const defs = `<defs><linearGradient id="hillG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a3d5a"/><stop offset="1" stop-color="#16253b" stop-opacity="0"/></linearGradient>
     <linearGradient id="treeG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#22463a"/><stop offset="1" stop-color="#3b7759"/></linearGradient>
     <linearGradient id="fadeG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".18" stop-color="#fff"/><stop offset=".82" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <radialGradient id="winGlow"><stop offset="0" stop-color="#ffcf73" stop-opacity=".35"/><stop offset="1" stop-color="#ffcf73" stop-opacity="0"/></radialGradient>
+    <pattern id="plankG" width="30" height="2.4" patternUnits="userSpaceOnUse"><rect width="30" height="1.2" fill="#000" opacity=".25"/></pattern>
     <mask id="fadeM"><rect width="240" height="172" fill="url(#fadeG)"/></mask></defs>`;
   s.vb = vb;
   return defs + `<g mask="url(#fadeM)">${ground}</g>` + back + mid + front + (fx != null ? sparkle(fx, fy, k) : "");
