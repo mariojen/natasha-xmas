@@ -107,9 +107,27 @@
   .sub { color: var(--muted); font-size: 15px; line-height: 1.5; }
   footer { color: var(--muted); font-size: 13px; opacity: 0.8; }
 
+  /* ----- Growing tree scene ----- */
+  .scene { width: 100%; max-width: 300px; margin: -12px auto -10px; }
+  .scene svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .scene-cap { margin-top: 4px; font-size: 15px; line-height: 1.4; color: var(--ink); }
+  .scene-day {
+    display: inline-block; margin-right: 6px; font-size: 11px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--gold); font-weight: 500;
+  }
+  .scene-since { margin-top: 4px; font-size: 12px; color: var(--muted); min-height: 1em; }
+  .scene .spark, .scene .new { transform-box: fill-box; transform-origin: center; animation: pop 1.8s ease-in-out infinite; }
+  .scene .bulb { animation: blink 2.6s ease-in-out infinite; }
+  .scene .glow { filter: drop-shadow(0 0 5px rgba(255,210,120,0.9)); }
+  .scene .fall { transform-box: fill-box; transform-origin: center; animation: fall 7s linear infinite; }
+  @keyframes pop { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.35); opacity: 0.75; } }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+  @keyframes fall { 0% { transform: translate(0,0) rotate(0); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translate(-14px,60px) rotate(220deg); opacity: 0; } }
+
   .celebrate h1 { font-size: clamp(48px, 13vw, 96px); }
   @media (prefers-reduced-motion: reduce) {
     .candle.lit .flame { animation: none; }
+    .scene .spark, .scene .new, .scene .bulb, .scene .fall { animation: none; }
   }
 </style>
 </head>
@@ -121,6 +139,12 @@
     <div class="eyebrow" id="eyebrow">For Natasha</div>
     <h1 id="title">Counting down to <em>julafton</em></h1>
   </header>
+
+  <section class="scene" aria-label="Today's tree">
+    <svg id="tree" viewBox="0 0 240 172" role="img" aria-label="A little Christmas tree growing day by day"></svg>
+    <div class="scene-cap" id="sceneCap"></div>
+    <div class="scene-since" id="sceneSince"></div>
+  </section>
 
   <section class="clock" id="clock" aria-live="polite">
     <div class="unit"><div class="num" id="d">--</div><div class="lbl">Days</div></div>
@@ -237,10 +261,245 @@ function renderNote(now) {
   }
 }
 
+/* ================= Growing tree =================
+   Planted 9 Oct, grows until first Advent, then one decoration a day.
+   Preview any day with ?date=YYYY-MM-DD                                */
+const qs = new URLSearchParams(location.search);
+const PREVIEW = /^\d{4}-\d{2}-\d{2}$/.test(qs.get("date") || "");
+function getNow() {
+  const real = new Date();
+  if (!PREVIEW) return real;
+  const [y, m, d] = qs.get("date").split("-").map(Number);
+  return new Date(y, m - 1, d, real.getHours(), real.getMinutes(), real.getSeconds());
+}
+const dayDiff = (a, b) => Math.round((Date.UTC(b.getFullYear(), b.getMonth(), b.getDate()) - Date.UTC(a.getFullYear(), a.getMonth(), a.getDate())) / 864e5);
+const ymd = d => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+
+const DECOS = [ // one per day, 1–23 December: [shape, colour, name]
+  ["bauble", "#c8443c", "a red bauble"], ["goat", 0, "a little straw goat"], ["heart", "#d94f6b", "a red heart"],
+  ["bauble", "#e8c27a", "a gold bauble"], ["cane", 0, "a candy cane"], ["ginger", 0, "a gingerbread friend"],
+  ["dala", "#c8443c", "a Dala horse"], ["bauble", "#5b8fd1", "a blue bauble"], ["bell", "#e8c27a", "a little bell"],
+  ["star", "#f3ece0", "a white star"], ["heart", "#e8c27a", "a woven gold heart"], ["bauble", "#f3ece0", "a snow-white bauble"],
+  ["lussekatt", 0, "a lussekatt, for Lucia"], ["goat", 0, "another straw goat"], ["bauble", "#c8443c", "a red bauble"],
+  ["cane", 0, "a candy cane"], ["dala", "#5b8fd1", "a blue Dala horse"], ["ginger", 0, "a second gingerbread friend"],
+  ["bell", "#dfe6ee", "a silver bell"], ["bauble", "#e8c27a", "a gold bauble"], ["heart", "#c8443c", "a felt heart"],
+  ["star", "#e8c27a", "a little gold star"], ["bauble", "#7aa86a", "a green glass bauble"]
+];
+const VISITORS = { "10-17": "hedgehog", "10-30": "hedgehog", "11-08": "bullfinch", "11-22": "bullfinch", "12-06": "tomte", "12-18": "tomte" };
+const VISIT_CAPS = {
+  hedgehog: ["A hedgehog stopped by before its winter nap.", "The hedgehog came back to say goodnight until spring."],
+  bullfinch: ["A bullfinch is visiting the branches.", "The bullfinch is back, puffed up against the cold."]
+};
+const GROW_CAPS = [
+  "Grew a little taller overnight.", "Roots digging in for winter.", "Soaking up what little daylight there is.",
+  "Reaching for the moonlight.", "A few more needles today.", "Standing a bit prouder today.",
+  "Quietly growing in the dark.", "A little fuller around the middle.", "Stretching towards the stars.",
+  "Growing while you sleep."
+];
+
+function sceneState(date) {
+  const Y = target(date).getFullYear();
+  const plant = new Date(Y, 9, 9), adv1 = adventSundays(Y)[0];
+  const d = dayDiff(plant, date), growDays = dayDiff(plant, adv1);
+  const md = date.getMonth(), dd = date.getDate();
+  const s = { d, date, adv1 };
+  s.phase = d < 0 ? "empty" : d < 3 ? "seed" : d < 7 ? "sprout" : "tree";
+  const tgAt = x => Math.max(0, Math.min(1, (x - 7) / (growDays - 7)));
+  s.tg = tgAt(d);
+  s.tiers = Math.min(5, 1 + Math.floor(s.tg * 4.999));
+  s.prevTiers = Math.min(5, 1 + Math.floor(tgAt(d - 1) * 4.999));
+  s.leaves = md === 9;
+  const sd = dayDiff(new Date(Y, 10, 15), date);
+  s.snow = sd < 0 ? 0 : Math.min(1, (sd + 1) / 26);
+  s.firstSnow = sd === 0;
+  s.frost = dayDiff(new Date(Y, 10, 1), date) >= 0;
+  s.firstFrost = md === 10 && dd === 1;
+  s.lights = dayDiff(adv1, date) >= 0;
+  s.isAdv1 = dayDiff(adv1, date) === 0;
+  const decDay = md === 11 ? dd : 0;
+  s.decos = Math.min(23, decDay);
+  s.newDeco = decDay >= 1 && decDay <= 23;
+  s.star = s.gifts = decDay >= 24;
+  s.visitor = VISITORS[String(md + 1).padStart(2, "0") + "-" + String(dd).padStart(2, "0")] || null;
+  s.visitN = s.visitor ? Object.entries(VISITORS).filter(([k, v]) => v === s.visitor && k < ymd(date).slice(5)).length : 0;
+  return s;
+}
+
+function sceneCaption(s) {
+  if (s.phase === "empty") return "A new seed gets planted on 9 October.";
+  if (s.star) return "The star is on top. God Jul! ⭐";
+  if (s.newDeco) return "New today: " + DECOS[s.decos - 1][2] + "." + (s.visitor === "tomte" ? " And someone's peeking…" : "");
+  if (s.isAdv1) return "Fully grown, and the lights are on. Första advent!";
+  if (s.visitor && VISIT_CAPS[s.visitor]) return VISIT_CAPS[s.visitor][Math.min(s.visitN, 1)];
+  if (s.phase === "seed") return ["A tiny seed has been planted.", "The seed is resting in the soil.", "Something is stirring underground…"][s.d];
+  if (s.phase === "sprout") return ["The first sprout! 🌱", "Two little leaves, reaching for the light.", "The sprout stood up a little taller.", "The first needles are appearing."][s.d - 3];
+  if (s.firstFrost) return "First frost on the ground.";
+  if (s.firstSnow) return "First snow! ❄️";
+  if (s.tiers > s.prevTiers) return "A new tier of branches!";
+  return GROW_CAPS[s.d % GROW_CAPS.length];
+}
+
+// Fixed, pleasing spots for the 23 decorations (seeded, so always the same)
+const SLOTS = (() => {
+  let a = 7; const rnd = () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const out = [], H = 130, W = 104;
+  while (out.length < 23) {
+    for (let i = 0; i < 400; i++) {
+      const t = 0.2 + rnd() * 0.76, sx = (rnd() * 2 - 1) * 0.78;
+      const x = sx * W / 2 * t * 0.85, y = t * H;
+      if (out.every(p => Math.hypot(p.x - x, p.y - y) > 13.5 - i / 60)) { out.push({ t, sx, x, y }); break; }
+    }
+  }
+  return out;
+})();
+
+function decoSVG(type, col, x, y, cls) {
+  const g = (inner) => `<g transform="translate(${x.toFixed(1)},${y.toFixed(1)})"><g class="${cls || ""}">${inner}</g></g>`;
+  switch (type) {
+    case "bauble": return g(`<rect x="-1.2" y="-5.6" width="2.4" height="1.8" fill="#d9c08a"/><circle r="4.2" fill="${col}"/><circle cx="-1.4" cy="-1.4" r="1.1" fill="#fff" opacity=".55"/>`);
+    case "heart": return g(`<path d="M0,3.6 C-5.6,-0.6 -3.4,-5.4 0,-2.6 C3.4,-5.4 5.6,-0.6 0,3.6Z" fill="${col}"/>`);
+    case "goat": return g(`<path d="M-4,0 L3,0 M-3,0 L-3.6,4 M-1.4,0 L-1.6,4 M1.4,0 L1.6,4 M3,0 L3.4,4 M3,0 L4.6,-3 C5.6,-5.2 3.2,-5.6 3.7,-3.4" stroke="#e3c27a" stroke-width="1.15" fill="none" stroke-linecap="round"/><circle cx="3.6" cy="-1.4" r=".9" fill="#c8443c"/>`);
+    case "cane": return g(`<path d="M1.6,5 L1.6,-1.8 A2.3,2.3 0 0 0 -3,-1.8" stroke="#f6f1e8" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M1.6,5 L1.6,-1.8 A2.3,2.3 0 0 0 -3,-1.8" stroke="#c8443c" stroke-width="2" fill="none" stroke-dasharray="1.3 1.3"/>`);
+    case "ginger": return g(`<ellipse cy="0.8" rx="4.4" ry="1.3" fill="#b8743a"/><ellipse cy="1.8" rx="2.5" ry="3.2" fill="#b8743a"/><circle cy="-2.8" r="2" fill="#b8743a"/><circle cy="1" r=".45" fill="#fff"/><circle cy="2.6" r=".45" fill="#fff"/>`);
+    case "dala": return g(`<path d="M-4.2,3.4 L-3.6,-0.6 L1.8,-0.6 L3,-3.8 L4.8,-3.2 L4.2,0 L3.6,3.4 L2.4,3.4 L2.4,1 L-2.4,1 L-2.8,3.4Z" fill="${col}"/><path d="M-2.4,0.2 Q0,-1.4 1.8,0.2" stroke="#e8c27a" stroke-width=".6" fill="none"/>`);
+    case "bell": return g(`<path d="M-3.6,2.6 C-3.6,-2 -2,-4.2 0,-4.2 C2,-4.2 3.6,-2 3.6,2.6Z" fill="${col}"/><circle cy="3.2" r="1" fill="#c8443c"/>`);
+    case "star": return g(starPath(0, 0, 4.4, col));
+    case "lussekatt": return g(`<path d="M-0.8,0 C-0.8,-3.4 -5.2,-3.2 -4.6,0 C-4.1,2.2 -1.6,1.8 -1.6,0 M0.8,0 C0.8,3.4 5.2,3.2 4.6,0 C4.1,-2.2 1.6,-1.8 1.6,0 M-1.6,0 L1.6,0" stroke="#e0a63a" stroke-width="2.2" fill="none" stroke-linecap="round"/><circle cx="-2.9" cy="-0.1" r=".8" fill="#3a1f14"/><circle cx="2.9" cy="0.1" r=".8" fill="#3a1f14"/>`);
+  }
+  return "";
+}
+function starPath(cx, cy, r, col, cls) {
+  let p = "";
+  for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r; p += (i ? "L" : "M") + (cx + rr * Math.cos(a)).toFixed(2) + "," + (cy + rr * Math.sin(a)).toFixed(2); }
+  return `<path class="${cls || ""}" d="${p}Z" fill="${col}"/>`;
+}
+const sparkle = (x, y, k) => { const r = 5 * Math.max(0.55, k), q = r * 0.24; return `<path class="spark" d="M${x},${y - r} L${x + q},${y - q} L${x + r},${y} L${x + q},${y + q} L${x},${y + r} L${x - q},${y + q} L${x - r},${y} L${x - q},${y - q}Z" fill="#fff6d6"/>`; };
+
+function drawScene(s) {
+  const cx = 120, base = 149;
+  let back = "", mid = "", front = "", fx = cx, fy = 140;
+  // Camera: zoom in on a small plant, pull back as it grows
+  const plantH = s.phase === "seed" ? 8 : s.phase === "sprout" ? 12 + (s.d - 3) * 4.5 : s.phase === "tree" ? 24 + 106 * s.tg : 40;
+  const vh = Math.min(172, Math.max(64, plantH / 0.62 + 18)), vw = vh * 240 / 172, k = vh / 172;
+  const vb = [cx - vw / 2, base + 23 * k - vh, vw, vh];
+  const hillY = x => { const t = x / 240; return 163 - 28 * 2 * t * (1 - t); };
+
+  // Ground
+  let ground = `<path d="M0,172 L0,163 Q120,135 240,163 L240,172Z" fill="url(#hillG)"/>`;
+  if (s.frost && s.snow < 0.35) for (let i = 0; i < 22; i++) { const x = 14 + i * 9.7 + (i * 37 % 5); ground += `<circle cx="${x}" cy="${(hillY(x) + 1.5 + (i * 13 % 4)).toFixed(1)}" r=".75" fill="#dfe9f5" opacity=".75"/>`; }
+  if (s.snow > 0) ground += `<path d="M0,163 Q120,135 240,163" stroke="#eef3f8" stroke-width="${(1.5 + s.snow * 6).toFixed(1)}" fill="none" opacity=".95"/>`;
+  if (s.leaves) {
+    [[40, "#c8743c", 30], [78, "#d9a441", -20], [158, "#a8432f", 50], [190, "#d9a441", 10], [205, "#c8743c", -40]].forEach(([x, c, r]) => {
+      ground += `<ellipse cx="${x}" cy="${(hillY(x) + 1).toFixed(1)}" rx="3" ry="1.5" fill="${c}" transform="rotate(${r} ${x} ${hillY(x) + 1})"/>`;
+    });
+    const lx1 = vb[0] + vb[2] * 0.78, lx2 = vb[0] + vb[2] * 0.2, ly = vb[1] + vb[3] * 0.25, ls = Math.max(0.6, k);
+    mid += `<ellipse class="fall" cx="${lx1}" cy="${ly}" rx="${2.8 * ls}" ry="${1.4 * ls}" fill="#d9a441"/><ellipse class="fall" style="animation-delay:-3.5s" cx="${lx2}" cy="${ly - 6 * k}" rx="${2.8 * ls}" ry="${1.4 * ls}" fill="#c8743c"/>`;
+  }
+  if (s.phase === "seed" || s.phase === "sprout") ground += `<ellipse cx="${cx}" cy="${base + 1.5}" rx="15" ry="3.6" fill="#2b2420"/>`;
+
+  // Plant
+  if (s.phase === "seed") {
+    mid += `<ellipse cx="${cx}" cy="${base}" rx="3.3" ry="2.3" fill="#8a5a3b"/>`;
+    if (s.d === 2) mid += `<path d="M${cx - 1},${base - 2} L${cx},${base - 0.4} L${cx + 1},${base - 2}" stroke="#c9a27a" stroke-width=".6" fill="none"/><path d="M${cx},${base - 2.2} L${cx},${base - 4.5}" stroke="#8cc56f" stroke-width="1.2" stroke-linecap="round"/>`;
+    fx = cx; fy = base - 8;
+  } else if (s.phase === "sprout") {
+    const h = 7 + (s.d - 3) * 4.5, ty = base - h;
+    mid += `<path d="M${cx},${base} Q${cx - 2.5},${base - h / 2} ${cx},${ty}" stroke="#7fb069" stroke-width="1.8" fill="none" stroke-linecap="round"/>`;
+    mid += `<ellipse cx="${cx - 4}" cy="${ty + 0.5}" rx="4.2" ry="1.9" fill="#8cc56f" transform="rotate(-28 ${cx - 4} ${ty + 0.5})"/><ellipse cx="${cx + 4}" cy="${ty + 0.5}" rx="4.2" ry="1.9" fill="#8cc56f" transform="rotate(28 ${cx + 4} ${ty + 0.5})"/>`;
+    if (s.d === 6) mid += `<path d="M${cx},${ty - 6} L${cx + 2.6},${ty} L${cx - 2.6},${ty}Z" fill="#3d7a60"/>`;
+    fx = cx; fy = ty - 9;
+  } else if (s.phase === "tree") {
+    const H = 24 + 106 * s.tg, W = H * 0.8, n = s.tiers;
+    const trunkH = Math.max(5, H * 0.1), trunkW = Math.max(3, H * 0.07);
+    const apex = base - H, fb = base - trunkH, fh = fb - apex;
+    mid += `<rect x="${cx - trunkW / 2}" y="${fb - 2}" width="${trunkW}" height="${trunkH + 2}" rx="1" fill="#5a3d2b"/>`;
+    const hwAt = t => W / 2 * t * 0.85;
+    for (let i = n - 1; i >= 0; i--) {
+      const yb = apex + fh * (i + 1) / n, yt = i === 0 ? apex : apex + fh * i / n - fh / n * 0.55;
+      const hw = W / 2 * (0.35 + 0.65 * (i + 1) / n);
+      mid += `<path d="M${cx},${yt.toFixed(1)} L${(cx + hw).toFixed(1)},${yb.toFixed(1)} Q${cx},${(yb + 4).toFixed(1)} ${(cx - hw).toFixed(1)},${yb.toFixed(1)}Z" fill="url(#treeG)"/>`;
+      if (s.snow > 0.15) {
+        mid += `<path d="M${(cx - hw).toFixed(1)},${yb.toFixed(1)} Q${cx},${(yb + 4).toFixed(1)} ${(cx + hw).toFixed(1)},${yb.toFixed(1)}" stroke="#eef3f8" stroke-width="${(1 + 1.6 * s.snow).toFixed(1)}" fill="none" stroke-linecap="round" opacity=".9"/>`;
+        const k = 0.16; mid += `<path d="M${cx},${yt.toFixed(1)} L${(cx + hw * k).toFixed(1)},${(yt + (yb - yt) * k).toFixed(1)} L${(cx - hw * k).toFixed(1)},${(yt + (yb - yt) * k).toFixed(1)}Z" fill="#eef3f8" opacity=".9"/>`;
+      }
+    }
+    if (s.lights) {
+      const cols = ["#ffd27a", "#ff9a6a", "#fff3c4"]; let n2 = 0;
+      [0.36, 0.6, 0.84].forEach(j => {
+        for (let u = 0; u <= 1.001; u += 0.125) {
+          const t = j - 0.07 + 0.14 * u + 0.05 * Math.sin(u * Math.PI);
+          const x = cx + (u * 2 - 1) * hwAt(t) * 1.02, y = apex + t * fh;
+          mid += `<circle class="bulb" style="animation-delay:${(-(n2 * 0.37) % 2.6).toFixed(2)}s" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.9" fill="${cols[n2++ % 3]}"/>`;
+        }
+      });
+    }
+    for (let i = 0; i < s.decos; i++) {
+      const p = SLOTS[i], [type, col] = DECOS[i];
+      const x = cx + p.sx * hwAt(p.t), y = apex + p.t * fh, isNew = s.newDeco && i === s.decos - 1;
+      front += decoSVG(type, col, x, y, isNew ? "new" : "");
+      if (isNew) { fx = x + 7; fy = y - 7; }
+    }
+    if (!s.newDeco) { fx = cx + 6; fy = apex - 5; }
+    if (s.star) { front += `<g class="glow">${starPath(cx, apex - 1, 7.5, "#f1cf7f")}</g>`; fx = null; }
+    if (s.gifts) {
+      front += `<rect x="${cx - 38}" y="${base - 9}" width="13" height="9" rx="1" fill="#c8443c"/><rect x="${cx - 32.3}" y="${base - 9}" width="1.6" height="9" fill="#e8c27a"/><rect x="${cx - 38}" y="${base - 5.3}" width="13" height="1.6" fill="#e8c27a"/>`;
+      front += `<rect x="${cx - 22}" y="${base - 7}" width="10" height="7" rx="1" fill="#f3ece0"/><rect x="${cx - 17.8}" y="${base - 7}" width="1.4" height="7" fill="#c8443c"/>`;
+      front += `<rect x="${cx + 20}" y="${base - 10}" width="14" height="10" rx="1" fill="#e8c27a"/><rect x="${cx + 26.2}" y="${base - 10}" width="1.6" height="10" fill="#c8443c"/><rect x="${cx + 20}" y="${base - 5.8}" width="14" height="1.6" fill="#c8443c"/>`;
+    }
+    // Visitors
+    if (s.visitor === "bullfinch") {
+      const t = 0.5, bx = cx + hwAt(t) + 3, by = apex + t * fh - 3;
+      front += `<g transform="translate(${bx} ${by}) scale(1.6) translate(${-bx} ${-by})"><circle cx="${bx}" cy="${by}" r="4.2" fill="#7b808b"/><circle cx="${bx + 1.2}" cy="${by + 1.2}" r="3.3" fill="#e2603f"/><circle cx="${bx + 2.6}" cy="${by - 3.2}" r="2.6" fill="#7b808b"/><path d="M${bx + 0.6},${by - 4.4} A2.6,2.6 0 0 1 ${bx + 5},${by - 3.6} L${bx + 3},${by - 2.8}Z" fill="#1d1d22"/><path d="M${bx + 5},${by - 3.2} L${bx + 6.8},${by - 2.6} L${bx + 5},${by - 2}Z" fill="#2a2a2a"/><circle cx="${bx + 3.4}" cy="${by - 3.1}" r=".45" fill="#000"/><path d="M${bx - 4},${by - 0.5} L${bx - 7},${by + 1.2} L${bx - 4},${by + 1.6}Z" fill="#3b3e46"/></g>`;
+      fx = bx + 10; fy = by - 14;
+    }
+    if (s.visitor === "tomte") {
+      const tx = cx + W / 2 * 0.72, ty = base + 1;
+      front += `<g transform="translate(${tx} ${ty}) scale(1.55) translate(${-tx} ${-ty})"><rect x="${tx - 5}" y="${ty - 8}" width="10" height="8" rx="3" fill="#c8443c"/><circle cx="${tx}" cy="${ty - 11}" r="4" fill="#f2c9a8"/><path d="M${tx - 4.6},${ty - 11} Q${tx},${ty - 1} ${tx + 4.6},${ty - 11} Q${tx},${ty - 7.5} ${tx - 4.6},${ty - 11}Z" fill="#f6f3ee"/><path d="M${tx - 5},${ty - 13.5} L${tx + 1},${ty - 26} L${tx + 5},${ty - 13.5}Z" fill="#c8443c"/><circle cx="${tx + 1}" cy="${ty - 26}" r="1.6" fill="#f6f3ee"/><rect x="${tx - 5.4}" y="${ty - 14.6}" width="10.8" height="2.2" rx="1.1" fill="#f6f3ee"/><circle cx="${tx - 1.4}" cy="${ty - 11.6}" r=".5" fill="#2a1a12"/><circle cx="${tx + 1.6}" cy="${ty - 11.6}" r=".5" fill="#2a1a12"/><circle cx="${tx + 0.2}" cy="${ty - 10.2}" r=".9" fill="#e59b86"/></g>`;
+    }
+  }
+  if (s.visitor === "hedgehog") {
+    const hx = Math.round(cx - Math.max(22, (24 + 106 * s.tg) * 0.4 + 16)), hy = hillY(hx) - 3.5;
+    front += `<g><path d="M${hx - 10},${hy + 3} Q${hx - 10},${hy - 7} ${hx},${hy - 7} Q${hx + 8},${hy - 7} ${hx + 9},${hy + 1} L${hx + 9},${hy + 3}Z" fill="#5e4230"/>`;
+    for (let i = 0; i < 7; i++) { const a = Math.PI + i * Math.PI / 7.5 + 0.15, x1 = hx + Math.cos(a) * 8, y1 = hy + Math.sin(a) * 7 + 1; front += `<path d="M${x1.toFixed(1)},${y1.toFixed(1)} l${(Math.cos(a) * 3).toFixed(1)},${(Math.sin(a) * 3).toFixed(1)}" stroke="#3d2a1e" stroke-width="1.2" stroke-linecap="round"/>`; }
+    front += `<ellipse cx="${hx + 9}" cy="${hy + 0.8}" rx="4" ry="2.6" fill="#c79a6b"/><circle cx="${hx + 12.8}" cy="${hy + 0.6}" r="1" fill="#1a1a1a"/><circle cx="${hx + 8.6}" cy="${hy - 0.6}" r=".6" fill="#1a1a1a"/></g>`;
+    fx = hx + 4; fy = hy - 14;
+  }
+
+  const defs = `<defs><linearGradient id="hillG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a3d5a"/><stop offset="1" stop-color="#16253b" stop-opacity="0"/></linearGradient>
+    <linearGradient id="treeG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#22463a"/><stop offset="1" stop-color="#3b7759"/></linearGradient>
+    <linearGradient id="fadeG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".18" stop-color="#fff"/><stop offset=".82" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <mask id="fadeM"><rect width="240" height="172" fill="url(#fadeG)"/></mask></defs>`;
+  s.vb = vb;
+  return defs + `<g mask="url(#fadeM)">${ground}</g>` + back + mid + front + (fx != null ? sparkle(fx, fy, k) : "");
+}
+
+function paintScene(date, sinceText) {
+  const s = sceneState(date);
+  $("tree").innerHTML = drawScene(s);
+  $("tree").setAttribute("viewBox", s.vb.map(v => v.toFixed(1)).join(" "));
+  $("sceneCap").innerHTML = (s.phase === "empty" ? "" : `<span class="scene-day">Day ${s.d + 1}</span>`) + sceneCaption(s);
+  $("sceneSince").textContent = sinceText || "";
+}
+function renderScene(now) {
+  let last = null;
+  if (!PREVIEW) { try { last = localStorage.getItem("xmas-tree-seen"); localStorage.setItem("xmas-tree-seen", ymd(now)); } catch (e) {} }
+  const missed = last ? dayDiff(new Date(last + "T12:00:00"), now) : 0;
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (missed >= 2 && missed <= 40 && !reduce) {
+    let k = missed - 1;
+    const step = () => {
+      const d = new Date(now); d.setDate(d.getDate() - k);
+      paintScene(d, k ? "Catching up…" : missed + " new days since your last visit");
+      if (k-- > 0) setTimeout(step, 420);
+    };
+    step();
+  } else paintScene(now, missed >= 2 ? missed + " new days since your last visit" : "");
+}
+
 const pad = n => String(n).padStart(2, "0");
 let lastDay = -1;
 function tick() {
-  const now = new Date();
+  const now = getNow();
   const t = target(now);
   // Wall-clock difference: ignore DST shifts so the hours match the clock
   const wall = x => Date.UTC(x.getFullYear(), x.getMonth(), x.getDate(), x.getHours(), x.getMinutes(), x.getSeconds(), x.getMilliseconds());
@@ -266,6 +525,7 @@ function tick() {
   if (now.getDate() !== lastDay) {
     lastDay = now.getDate();
     renderCandles(now);
+    renderScene(now);
     if (diff > 0) renderNote(now);
   }
 }
