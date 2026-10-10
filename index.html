@@ -87,6 +87,11 @@
   .candle.lit .flame { opacity: 1; animation: flicker 2.4s infinite ease-in-out; }
   .stick { width: 16px; height: 52px; border-radius: 3px; background: linear-gradient(#f3ece0, #d9cfbf); }
   .candle.lit .stick { box-shadow: 0 -10px 24px rgba(255,190,90,0.25); }
+  .candles, .candles .stick, #adventText { transition: opacity .6s, transform .6s, height .6s, font-size .6s; }
+  .candles.waiting { opacity: 0.45; gap: clamp(12px, 4vw, 22px); margin-top: -12px; }
+  .candles.waiting .stick { width: 10px; height: 28px; }
+  .candles.waiting span { display: none; }
+  #adventText.waiting { font-size: 13px; opacity: 0.7; margin-top: -24px; }
   .candle span { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; }
   @keyframes flicker {
     0%,100% { transform: scale(1) rotate(-1deg); }
@@ -117,7 +122,6 @@
   }
   .scene-since { margin-top: 4px; font-size: 12px; color: var(--muted); min-height: 1em; }
   .scene .spark, .scene .new { transform-box: fill-box; transform-origin: center; animation: pop 1.8s ease-in-out infinite; }
-  .scene .flicker { transform-box: fill-box; transform-origin: 50% 100%; animation: flicker 2.4s infinite ease-in-out; }
   .scene .bulb { animation: blink 2.6s ease-in-out infinite; }
   .scene .glow { filter: drop-shadow(0 0 5px rgba(255,210,120,0.9)); }
   .scene .fall { transform-box: fill-box; transform-origin: center; animation: fall 7s linear infinite; }
@@ -128,7 +132,7 @@
   .celebrate h1 { font-size: clamp(48px, 13vw, 96px); }
   @media (prefers-reduced-motion: reduce) {
     .candle.lit .flame { animation: none; }
-    .scene .spark, .scene .new, .scene .bulb, .scene .fall, .scene .flicker { animation: none; }
+    .scene .spark, .scene .new, .scene .bulb, .scene .fall { animation: none; }
   }
 </style>
 </head>
@@ -153,6 +157,9 @@
     <div class="unit"><div class="num" id="m">--</div><div class="lbl">Minutes</div></div>
     <div class="unit"><div class="num" id="s">--</div><div class="lbl">Seconds</div></div>
   </section>
+
+  <section class="candles" id="candles" aria-label="Advent candles"></section>
+  <p class="sub" id="adventText"></p>
 
 
   <section class="note">
@@ -236,6 +243,8 @@ function renderCandles(now) {
   const lit = sundays.filter(s => now >= s).length;
   const wrap = $("candles");
   wrap.innerHTML = "";
+  wrap.classList.toggle("waiting", lit === 0);
+  $("adventText").classList.toggle("waiting", lit === 0);
   sundays.forEach((s, i) => {
     const c = document.createElement("div");
     c.className = "candle" + (i < lit ? " lit" : "");
@@ -461,22 +470,6 @@ function drawScene(s) {
       front += `<g transform="translate(${tx} ${ty}) scale(1.55) translate(${-tx} ${-ty})"><rect x="${tx - 5}" y="${ty - 8}" width="10" height="8" rx="3" fill="#c8443c"/><circle cx="${tx}" cy="${ty - 11}" r="4" fill="#f2c9a8"/><path d="M${tx - 4.6},${ty - 11} Q${tx},${ty - 1} ${tx + 4.6},${ty - 11} Q${tx},${ty - 7.5} ${tx - 4.6},${ty - 11}Z" fill="#f6f3ee"/><path d="M${tx - 5},${ty - 13.5} L${tx + 1},${ty - 26} L${tx + 5},${ty - 13.5}Z" fill="#c8443c"/><circle cx="${tx + 1}" cy="${ty - 26}" r="1.6" fill="#f6f3ee"/><rect x="${tx - 5.4}" y="${ty - 14.6}" width="10.8" height="2.2" rx="1.1" fill="#f6f3ee"/><circle cx="${tx - 1.4}" cy="${ty - 11.6}" r=".5" fill="#2a1a12"/><circle cx="${tx + 1.6}" cy="${ty - 11.6}" r=".5" fill="#2a1a12"/><circle cx="${tx + 0.2}" cy="${ty - 10.2}" r=".9" fill="#e59b86"/></g>`;
     }
   }
-  {
-    const sx = vb[0] + vb[2] * 0.8, sy = hillY(sx) - 0.5, z = k * 1.15;
-    let c = `<g transform="translate(${sx.toFixed(1)} ${sy.toFixed(1)}) scale(${z.toFixed(3)})">`;
-    c += `<path d="M-21,0 L21,0 L18,-5 L-18,-5Z" fill="#8a6a3c"/><rect x="-19" y="-7" width="38" height="2.6" rx="1.3" fill="#c9a45c"/>`;
-    c += `<path d="M-19,-6 q3,-3 6,0 q3,-3 6,0" stroke="#4f7a4a" stroke-width="1.6" fill="none"/><circle cx="-14" cy="-7.4" r="1.1" fill="#c8443c"/><circle cx="16" cy="-7.2" r="1.1" fill="#c8443c"/>`;
-    for (let i = 0; i < 4; i++) {
-      const x = -13.5 + i * 9, lit = i < s.candlesLit;
-      const weeks = Math.max(0, s.candlesLit - 1 - i); // earlier candles have burned longer
-      const h = 19 - weeks * 2.6, top = -7 - h;
-      c += `<rect x="${x - 2.6}" y="${top}" width="5.2" height="${h}" rx="1" fill="#f3ece0"/><rect x="${x + 1}" y="${top}" width="1.6" height="${h}" fill="#d9cfbf"/>`;
-      c += `<path d="M${x},${top} L${x},${top - 2.2}" stroke="#3a2a20" stroke-width=".8"/>`;
-      if (lit) c += `<circle cx="${x}" cy="${top - 4}" r="6" fill="url(#flameGlow)"/><path class="flicker" d="M${x},${top - 9.5} C${x + 2.6},${top - 5.5} ${x + 2.2},${top - 1.2} ${x},${top - 1.2} C${x - 2.2},${top - 1.2} ${x - 2.6},${top - 5.5} ${x},${top - 9.5}Z" fill="#ffd27a"/><path d="M${x},${top - 6} C${x + 1},${top - 4} ${x + 0.9},${top - 2.2} ${x},${top - 2.2} C${x - 0.9},${top - 2.2} ${x - 1},${top - 4} ${x},${top - 6}Z" fill="#fff6d6"/>`;
-    }
-    c += `</g>`;
-    back += c;
-  }
   if (s.visitor === "hedgehog") {
     const hx = Math.round(cx - Math.max(22, (24 + 106 * s.tg) * 0.4 + 16)), hy = hillY(hx) - 3.5;
     front += `<g><path d="M${hx - 10},${hy + 3} Q${hx - 10},${hy - 7} ${hx},${hy - 7} Q${hx + 8},${hy - 7} ${hx + 9},${hy + 1} L${hx + 9},${hy + 3}Z" fill="#5e4230"/>`;
@@ -488,7 +481,6 @@ function drawScene(s) {
   const defs = `<defs><linearGradient id="hillG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a3d5a"/><stop offset="1" stop-color="#16253b" stop-opacity="0"/></linearGradient>
     <linearGradient id="treeG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#22463a"/><stop offset="1" stop-color="#3b7759"/></linearGradient>
     <linearGradient id="fadeG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".18" stop-color="#fff"/><stop offset=".82" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
-    <radialGradient id="flameGlow"><stop offset="0" stop-color="#ffcf73" stop-opacity=".55"/><stop offset="1" stop-color="#ffcf73" stop-opacity="0"/></radialGradient>
     <mask id="fadeM"><rect width="240" height="172" fill="url(#fadeG)"/></mask></defs>`;
   s.vb = vb;
   return defs + `<g mask="url(#fadeM)">${ground}</g>` + back + mid + front + (fx != null ? sparkle(fx, fy, k) : "");
@@ -545,6 +537,7 @@ function tick() {
 
   if (now.getDate() !== lastDay) {
     lastDay = now.getDate();
+    renderCandles(now);
     renderScene(now);
     if (diff > 0) renderNote(now);
   }
